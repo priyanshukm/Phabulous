@@ -39,10 +39,18 @@ def getUserRevisionList(username, startDate, endDate):
   return getRevisionsWithConstraints(constraints)
 
 def getRevisionsWithConstraints(constraints):
-  result = phab.differential.revision.search(constraints=constraints)
   diffIDs = []
-  for data in result['data']:
-    diffIDs.append(data['id'])
+  after = None
+  for i in range(0, 1000, 100):
+    result = phab.differential.revision.search(constraints=constraints, order='newest', after=after, limit=100)
+    after = result['cursor']['after']
+    # print(len(result['data']))
+    for data in result['data']:
+      diffIDs.append(data['id'])
+
+    if after == None:
+      break
+
   return diffIDs
 
 def getDiffs(revisions):
