@@ -7,4 +7,6 @@
   - Total lines changed(added or removed)
 
 - How to Run
-  - python3 script.py username
+  - python3 script.py username startDate endDate
+  - All fields are necessary
+  - Date Format : '%Y-%m-%d'
