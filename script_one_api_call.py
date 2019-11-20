@@ -6,6 +6,7 @@ import os
 import time
 import sys
 
+CHUNK_SIZE = 21
 # TODO: Too slow, add mutiprocessing [~~ 2 min 30 sec] for single user
 # Time reduced to [~~ 20 sec]
 
@@ -69,7 +70,14 @@ def getLatestDiffIDs(diffs):
       marked[value['revisionID']] = 1
   return keys
 
+def process_info(title):
+  print(title)
+  print('module name:', __name__)
+  print('parent process:', os.getppid())
+  print('process id:', os.getpid())
+
 def processRevisions(revisions, shared_dict):
+  # process_info(revisions)
   allDiffs = getDiffs(revisions)              #Get all diffs from all revision
   latestDiffIDs = getLatestDiffIDs(allDiffs)  #Get latest diffs from all revision
 
@@ -78,15 +86,25 @@ def processRevisions(revisions, shared_dict):
       shared_dict["addLines"] = shared_dict["addLines"] + int(changedFile["addLines"])
       shared_dict["delLines"] = shared_dict["delLines"] + int(changedFile["delLines"])
 
-def getUserDiffHistory(username, startDate = "", endDate = ""):
+def getUserDiffHistory(username, startDate="", endDate=""):
   revisions = getUserRevisionList(username, getEpochTime(startDate), getEpochTime(endDate))
   diffcount = len(revisions)
 
-  shared_dict = {}
+  processes = []
+  manager = Manager()
+  shared_dict = manager.dict()
   shared_dict["addLines"] = 0
   shared_dict["delLines"] = 0
 
-  processRevisions(revisions, shared_dict)
+  revision_chunks = [revisions[i: i + CHUNK_SIZE] for i in range(0, len(revisions), CHUNK_SIZE)]
+  for rev_chunk in revision_chunks:
+    p = Process(target = processRevisions, args = (rev_chunk, shared_dict))
+    p.start()
+    processes.append(p)
+
+  for p in processes:
+    p.join()
+  # processRevisions(revisions, shared_dict)
 
   print("Total Diffs Raised: " + str(diffcount) + " [" + ','.join(map(str,revisions)) + "]")
   print("Total Lines Added: " + str(shared_dict["addLines"]))
